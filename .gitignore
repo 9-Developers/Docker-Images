@@ -1,0 +1,52 @@
+# ############################################################################ #
+#                                    System                                    #
+# ############################################################################ #
+
+.DS_Store
+*.pem
+
+# ############################################################################ #
+#                                     Code                                     #
+# ############################################################################ #
+
+# ############################################################################ #
+#                                     IDE                                      #
+# ############################################################################ #
+
+# Editor directories and files
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+### Eclipse ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+bin/
+!**/src/main/**/bin/
+!**/src/test/**/bin/
+
+# IntelliJ IDEA
+.idea
+
+### NetBeans ###
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+
+# Sublime workspace
+*.sublime-workspace
+
+# VS Code
+.vscode
+
+# Zed
+.zed
