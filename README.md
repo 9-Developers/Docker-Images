@@ -1,11 +1,42 @@
-# Template
+# FreeBSD CI Images
 
-[![Discord](https://img.shields.io/discord/452233740408717313?color=738ADB&label=discord&logo=discord)][1]
-[![License](https://img.shields.io/badge/License-BSD_3--Clause-blue.svg)][2]
-[![Release](https://img.shields.io/gitea/v/release/9-Developers/Template?gitea_url=https%3A%2F%2Fcodeberg.org)][3]
+OCI images used by 9 Developers CI jobs on FreeBSD. Images are built natively
+on FreeBSD and published to GitHub Container Registry.
 
-9 Developers project template.
+## Build
 
-[1]: https://discord.gg/KTgshSbEUU
-[2]: https://opensource.org/license/bsd-3-clause
-[3]: https://codeberg.org/9-Developers/Template/releases
+The default container tool is Podman. Build the base image followed by all
+dependent images:
+
+```sh
+make build
+```
+
+The dependent images can build concurrently after the base image finishes:
+
+```sh
+make -j 4 build
+```
+
+Build a single image with, for example, `make build-node`. Run `make help` for
+the complete target and configuration list.
+
+## Publish
+
+Create a classic GitHub personal access token with `write:packages`, then log
+in without placing the token on the command line:
+
+```sh
+env GHCR_USER=USERNAME GHCR_TOKEN=TOKEN make login
+make -j 4 publish
+```
+
+Every image receives an immutable `git-<commit>` tag. Runtime images also get
+their runtime version tag, and all images include a tag identifying the
+FreeBSD release where useful.
+
+Override settings on the command line when needed:
+
+```sh
+make FREEBSD_VERSION=15.1 OWNER=9-developers publish
+```
