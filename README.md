@@ -47,6 +47,9 @@ bit-for-bit reproducible snapshots.
 
 Use a FreeBSD host with native Podman configured for FreeBSD containers,
 Git, and GNU make (`gmake`). The upstream base remains hosted at GHCR.
+Podman must run as root on FreeBSD. When building as an unprivileged user,
+install the doas wrapper described below and export
+`CONTAINER_TOOL=/usr/local/bin/ci-podman` before invoking `gmake`.
 
 ```sh
 export CONFIRMED_PKG_QUARTER=2026q4
@@ -67,10 +70,17 @@ targets. Override settings with, for example, `gmake IMAGE_REVISION=2 publish`.
 ## Forgejo Actions
 
 1. Enable Actions for this repository.
-2. Add runner label `freebsd-15.1:host` to your native FreeBSD runner;
-   the workflow selects `runs-on: freebsd-15.1`.
+2. Add the mapping-style runner label below; the workflow selects
+   `runs-on: freebsd-15.1-host`:
+
+   ```yaml
+   labels:
+     freebsd-15.1-host:
+       backend: host
+   ```
 3. Ensure the runner account can run Podman, Git, GNU make, and standard shell
-   utilities. Host execution builds directly on that FreeBSD machine.
+   utilities. Install the doas wrapper below. Host execution builds directly
+   on that FreeBSD machine.
 4. Add repository secrets `REGISTRY_USER` and `REGISTRY_TOKEN` for a Forgejo
    account/token with package write access to `9-Developers`.
 5. After checking the public package build status, set repository Actions
@@ -87,3 +97,33 @@ targets. Override settings with, for example, `gmake IMAGE_REVISION=2 publish`.
 The workflow uses shell checkout, builds the base before its dependent images,
 then publishes release tags and moving aliases. Registry credentials use a
 temporary authentication file removed at the end of the job.
+
+### Rootful Podman through doas
+
+Run this once as root on the runner host, from a checkout of this repository:
+
+```sh
+install -o root -g wheel -m 0755 ci/podman-doas.sh /usr/local/bin/ci-podman
+```
+
+Add this rule to `/usr/local/etc/doas.conf`, replacing `RUNNER_USER` with the
+actual Unix account running the Forgejo runner:
+
+```text
+permit nopass setenv { REGISTRY_AUTH_FILE } RUNNER_USER as root cmd /usr/local/bin/podman
+```
+
+The rule preserves the workflow's temporary authentication-file path for every
+Podman invocation. The registry token itself is passed through stdin at login.
+The workflow sets `CONTAINER_TOOL=/usr/local/bin/ci-podman`, so login, pull,
+build, inspect, and push all use the same rootful Podman storage and credentials.
+The wrapper uses `doas -n` to fail immediately if noninteractive access is missing.
+
+Check the installation as the runner account:
+
+```sh
+/usr/local/bin/ci-podman info
+```
+
+The authentication file lives directly in the runner-owned temporary directory,
+so the runner can unlink it during cleanup even if Podman creates it as root.

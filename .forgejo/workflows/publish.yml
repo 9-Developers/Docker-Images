@@ -14,6 +14,7 @@ jobs:
   publish:
     runs-on: freebsd-15.1-host
     env:
+      CONTAINER_TOOL: /usr/local/bin/ci-podman
       CONFIRMED_PKG_QUARTER: ${{ vars.CONFIRMED_PKG_QUARTER }}
     steps:
       # Avoid JavaScript actions' platform-specific Node binaries.
@@ -45,6 +46,9 @@ jobs:
               test "${REF#refs/tags/}" = "$expected"
               ;;
           esac
+      - name: Check privileged Podman
+        shell: sh
+        run: '"$CONTAINER_TOOL" info'
       - name: Log in
         shell: sh
         env:
