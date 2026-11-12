@@ -1,4 +1,4 @@
-ARG FREEBSD_CI_BASE=ghcr.io/9-developers/images/freebsd-ci-base:15.1
+ARG FREEBSD_CI_BASE=git.9dev.tech/9-developers/ci-base:freebsd15.1
 
 FROM ${FREEBSD_CI_BASE}
 
@@ -18,6 +18,8 @@ RUN bash --version \
     && git --version \
     && cargo --version \
     && rustc --version
+
+RUN pkg query '%n-%v' | sort > /usr/local/share/ci-packages.txt
 
 WORKDIR /workspace
 

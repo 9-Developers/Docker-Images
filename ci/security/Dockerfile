@@ -1,6 +1,6 @@
 ARG SOCKET_VERSION=1.1.152
 ARG SEMGREP_VERSION=1.130.0
-ARG FREEBSD_CI_BASE=ghcr.io/9-developers/images/freebsd-ci-base:15.1
+ARG FREEBSD_CI_BASE=git.9dev.tech/9-developers/ci-base:freebsd15.1
 
 FROM ${FREEBSD_CI_BASE} AS semgrep-core-builder
 
@@ -9,6 +9,7 @@ ARG SEMGREP_VERSION
 # Build semgrep-core from source because Semgrep does not publish FreeBSD wheels.
 RUN pkg update \
     && pkg install -y \
+        gitleaks \
         gmake \
         gmp \
         libev \
@@ -97,6 +98,8 @@ RUN bash --version \
     && socket --version \
     && semgrep --version \
     && trivy --version
+
+RUN pkg query '%n-%v' | sort > /usr/local/share/ci-packages.txt
 
 WORKDIR /workspace
 
