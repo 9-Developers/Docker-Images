@@ -2,6 +2,7 @@
 set -eu
 
 tool=${CONTAINER_TOOL:-podman}
+registry_tool=${REGISTRY_TOOL:-skopeo}
 registry=${REGISTRY:-git.9dev.tech}
 owner=${OWNER:-9-developers}
 freebsd=${FREEBSD_VERSION:-15.1}
@@ -38,6 +39,10 @@ validate() {
 command=$1
 shift
 case "$command" in
+check-tools)
+	"$tool" info
+	"$registry_tool" --version
+	;;
 login)
 	: "${REGISTRY_USER:?REGISTRY_USER is required}"
 	: "${REGISTRY_TOKEN:?REGISTRY_TOKEN is required}"
@@ -83,13 +88,18 @@ publish)
 	trap 'rm -f "$error"' EXIT HUP INT TERM
 	for name; do
 		ref=$(image "$name"):$(version "$name")
-		if "$tool" manifest inspect "docker://$ref" >/dev/null 2>"$error"; then
+		# Skopeo's docker transport always queries the registry, never local storage.
+		if "$registry_tool" inspect --raw "docker://$ref" >/dev/null 2>"$error"; then
 			echo "Release already exists: $ref (increment IMAGE_REVISION)" >&2
 			exit 1
 		elif ! grep -Eiq 'manifest unknown|name unknown' "$error"; then
 			cat "$error" >&2
 			exit 1
 		fi
+	done
+	# Ensure the entire local release is available before the first push.
+	for name; do
+		"$tool" image inspect "$(image "$name"):$(version "$name")" >/dev/null
 	done
 	for name; do
 		"$tool" push "$(image "$name"):$(version "$name")"

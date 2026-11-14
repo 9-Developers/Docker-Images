@@ -15,6 +15,7 @@ jobs:
     runs-on: freebsd-15.1-host
     env:
       CONTAINER_TOOL: /usr/local/bin/ci-podman
+      REGISTRY_TOOL: /usr/local/bin/ci-skopeo
       CONFIRMED_PKG_QUARTER: ${{ vars.CONFIRMED_PKG_QUARTER }}
     steps:
       # Avoid JavaScript actions' platform-specific Node binaries.
@@ -46,9 +47,9 @@ jobs:
               test "${REF#refs/tags/}" = "$expected"
               ;;
           esac
-      - name: Check privileged Podman
+      - name: Check privileged container tools
         shell: sh
-        run: '"$CONTAINER_TOOL" info'
+        run: gmake check-tools
       - name: Log in
         shell: sh
         env:

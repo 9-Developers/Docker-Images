@@ -67,6 +67,28 @@ Login reads `REGISTRY_USER` and `REGISTRY_TOKEN` from the environment and passes
 the token through stdin. `publish` includes a fresh build. `gmake help` lists
 targets. Override settings with, for example, `gmake IMAGE_REVISION=2 publish`.
 
+Publishing also requires Skopeo (`REGISTRY_TOOL`, default `skopeo`) for
+remote-only release-tag checks. Run `gmake check-tools` before a local build.
+The Actions workflow checks tool access before building.
+
+To retry publishing images already present in the host's Podman storage:
+
+```sh
+export CONTAINER_TOOL=/usr/local/bin/ci-podman
+export REGISTRY_TOOL=/usr/local/bin/ci-skopeo
+export CONFIRMED_PKG_QUARTER=2026q4
+# REGISTRY_USER and REGISTRY_TOKEN must be set in your environment.
+export REGISTRY_AUTH_FILE="$(mktemp -d)/auth.json"
+gmake login
+gmake publish-existing
+rm -f "$REGISTRY_AUTH_FILE"
+rmdir "$(dirname "$REGISTRY_AUTH_FILE")"
+```
+
+Use the same release settings as the original build. This checks that every
+requested image exists locally and every release tag is absent remotely before
+pushing. A partial earlier publication still requires a new release revision.
+
 ## Forgejo Actions
 
 1. Enable Actions for this repository.
@@ -104,6 +126,8 @@ Run this once as root on the runner host, from a checkout of this repository:
 
 ```sh
 install -o root -g wheel -m 0755 ci/podman-doas.sh /usr/local/bin/ci-podman
+pkg install -y skopeo
+install -o root -g wheel -m 0755 ci/skopeo-doas.sh /usr/local/bin/ci-skopeo
 ```
 
 Add this rule to `/usr/local/etc/doas.conf`, replacing `RUNNER_USER` with the
@@ -111,6 +135,7 @@ actual Unix account running the Forgejo runner:
 
 ```text
 permit nopass setenv { REGISTRY_AUTH_FILE } RUNNER_USER as root cmd /usr/local/bin/podman
+permit nopass setenv { REGISTRY_AUTH_FILE } RUNNER_USER as root cmd /usr/local/bin/skopeo
 ```
 
 The rule preserves the workflow's temporary authentication-file path for every
@@ -123,6 +148,7 @@ Check the installation as the runner account:
 
 ```sh
 /usr/local/bin/ci-podman info
+/usr/local/bin/ci-skopeo --version
 ```
 
 The authentication file lives directly in the runner-owned temporary directory,
