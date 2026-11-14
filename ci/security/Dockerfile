@@ -9,7 +9,6 @@ ARG SEMGREP_VERSION
 # Build semgrep-core from source because Semgrep does not publish FreeBSD wheels.
 RUN pkg update \
     && pkg install -y \
-        gitleaks \
         gmake \
         gmp \
         libev \
@@ -72,6 +71,7 @@ RUN pkg update \
     && pkg install -y \
         node26 \
         npm-node26 \
+        gitleaks \
         gmp \
         libev \
         pcre \
@@ -95,6 +95,7 @@ RUN bash --version \
     && git --version \
     && node --version \
     && npm --version \
+    && gitleaks --version \
     && socket --version \
     && semgrep --version \
     && trivy --version
