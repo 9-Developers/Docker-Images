@@ -70,7 +70,11 @@ build)
 		exit 1
 		;;
 	esac
+	dockerfile=$(pwd)/$context/Dockerfile
+	# Rust and Odin share cross-toolchain sources under ci/cross.
+	case "$name" in rust | odin) context=. ;; esac
 	"$tool" build --no-cache --pull=never \
+		--file "$dockerfile" \
 		--build-arg "FREEBSD_BASE=$base" \
 		--build-arg "FREEBSD_CI_BASE=$base" \
 		--label "org.opencontainers.image.source=$source_url" \

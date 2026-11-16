@@ -45,6 +45,91 @@ bit-for-bit reproducible snapshots.
 
 ## Build and publish locally
 
+### Cross-compilation
+
+`ci-rust` and `ci-odin` include FreeBSD-hosted cross-compilers. Native builds
+remain the default. The other images do not install cross-compilation tooling.
+
+| Image | Cross targets | Toolchain |
+| --- | --- | --- |
+| ci-rust | Linux x64/ARM64, GNU libc and musl | Zig + cargo-zigbuild |
+| ci-rust | Windows x64/ARM64 | LLVM-MinGW, Rust `windows-gnullvm` targets |
+| ci-odin | Linux x64/ARM64, GNU libc | Odin object generation + Zig linking |
+| ci-odin | Windows x64 (experimental) | Odin object generation + LLVM-MinGW |
+
+Image builds compile and link smoke programs for every listed target. The Rust
+smoke program calls C and uses threads; the Odin program allocates, prints, and
+checks floating-point arithmetic. Linux x64 prototypes also ran under FreeBSD's
+Linux compatibility layer. Windows and ARM64 runtime validation is still pending.
+Odin Windows uses an MSVC compatibility marker and is experimental until tested
+with your application's runtime and native dependencies.
+
+#### Rust
+
+```sh
+cargo zigbuild --release --target x86_64-unknown-linux-gnu
+cargo zigbuild --release --target aarch64-unknown-linux-gnu
+cargo zigbuild --release --target x86_64-unknown-linux-musl
+cargo zigbuild --release --target aarch64-unknown-linux-musl
+cargo build --release --target x86_64-pc-windows-gnullvm
+cargo build --release --target aarch64-pc-windows-gnullvm
+```
+
+Windows linker, C/C++ compiler, and archiver settings are scoped to those target
+triples. The Windows runtime is UCRT; use Windows 10/11 as the deployment baseline.
+Linux musl is the option for static binaries. GNU targets use Zig's default glibc
+baseline; select a particular baseline with, for example,
+`--target aarch64-unknown-linux-gnu.2.28`.
+
+Cross-compilers do not supply every third-party dependency. Native libraries
+such as OpenSSL must also be built for the selected target; FreeBSD libraries
+cannot be linked into Linux or Windows binaries.
+
+#### Odin
+
+Generate one object, then link it with the supplied helper:
+
+```sh
+odin build . -target:linux_amd64 -build-mode:obj -use-single-module -out:app.o
+odin-cross-link linux-amd64 app.o app
+
+odin build . -target:linux_arm64 -build-mode:obj -use-single-module -out:app-arm64.o
+odin-cross-link linux-arm64 app-arm64.o app-arm64
+
+odin build . -target:windows_amd64 -build-mode:obj -use-single-module -out:app-windows.o
+odin-cross-link windows-amd64 app-windows.o app.exe
+```
+
+`odin-cross-link TARGET OBJECT OUTPUT [flags...]` supplies basic runtime libraries.
+Pass additional target-specific libraries and search paths after the output
+argument, for example `-L/path/to/target/lib -lfoo`. It does not resolve arbitrary
+foreign libraries automatically. It supports executables; DLLs, custom entry
+points, sanitizers, and LTO require project-specific linking.
+
+#### Toolchain maintenance
+
+The Windows builder stage uses LLVM-MinGW `20251216` with LLVM `21.1.8`.
+Update the MinGW release and LLVM runtime sources together: newer MinGW headers
+failed against LLVM 21's unwinder during investigation. The builder checks the
+installed LLVM version. `CROSS_BUILD_JOBS` defaults to 6.
+
+Rust installs cargo-zigbuild `0.24.1`; Zig and LLVM come from the quarterly package
+repository. `/usr/local/share/ci-cross-toolchains.txt` records installed versions.
+Only the installed Windows toolchain is copied from the builder stage; source
+trees and build dependencies are excluded from the final image. Both images
+need LLVM at runtime because the Windows wrappers use `/usr/local/llvm21`.
+
+The Rust and Odin Dockerfiles use the repository root as build context, including
+shared files from `ci/cross`. `gmake` handles this automatically. For a direct build:
+
+```sh
+ci-podman build -f ci/rust/Dockerfile \
+  --build-arg FREEBSD_CI_BASE=git.9dev.tech/9-developers/ci-base:freebsd15.1-2026q4-r2 \
+  -t localhost/ci-rust:cross-test .
+```
+
+### Local release builds
+
 Use a FreeBSD host with native Podman configured for FreeBSD containers,
 Git, and GNU make (`gmake`). The upstream base remains hosted at GHCR.
 Podman must run as root on FreeBSD. When building as an unprivileged user,
