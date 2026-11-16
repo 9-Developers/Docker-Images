@@ -1,18 +1,20 @@
 # FreeBSD CI Images
 
 Native FreeBSD OCI images published to Forgejo Packages at
-`git.9dev.tech/9-developers/ci-{base,node,odin,openjdk,rust,security}`.
+`git.9dev.tech/9-developers/ci-{base,node,odin,openjdk,rust,security,go,dotnet}`.
 Source: https://git.9dev.tech/9-Developers/Docker-Images
 
 ## Releases and quarterly packages
 
 Release settings live at the top of `Makefile`: `FREEBSD_VERSION=15.1`,
-`PKG_QUARTER=2026q4`, and `IMAGE_REVISION=1`.
+`PKG_QUARTER=2026q4`, and `IMAGE_REVISION=2`.
 
 | Image | Release tag | Moving aliases |
 | --- | --- | --- |
 | ci-node | `24-freebsd15.1-2026q4-r1` | `24`, `24-freebsd15.1` |
 | ci-openjdk | `25-freebsd15.1-2026q4-r1` | `25`, `25-freebsd15.1` |
+| ci-dotnet | `10-freebsd15.1-2026q4-r2` | `10`, `10-freebsd15.1` |
+| ci-go | `freebsd15.1-2026q4-r2` | `freebsd15.1` |
 | ci-base, ci-rust, ci-security, ci-odin | `freebsd15.1-2026q4-r1` | `freebsd15.1` |
 
 Increment the revision for each rebuild in a quarter. The publisher refuses
@@ -47,8 +49,9 @@ bit-for-bit reproducible snapshots.
 
 ### Cross-compilation
 
-`ci-rust` and `ci-odin` include FreeBSD-hosted cross-compilers. Native builds
-remain the default. The other images do not install cross-compilation tooling.
+`ci-rust`, `ci-odin`, and `ci-go` include FreeBSD-hosted cross-compilers.
+`ci-dotnet` supports managed cross-publishing through its SDK.
+Native builds remain the default.
 
 | Image | Cross targets | Toolchain |
 | --- | --- | --- |
@@ -56,8 +59,15 @@ remain the default. The other images do not install cross-compilation tooling.
 | ci-rust | Windows x64/ARM64 | LLVM-MinGW, Rust `windows-gnullvm` targets |
 | ci-odin | Linux x64/ARM64, GNU libc | Odin object generation + Zig linking |
 | ci-odin | Windows x64 (experimental) | Odin object generation + LLVM-MinGW |
+| ci-go | FreeBSD, Linux, Windows x64/ARM64 (pure Go) | Go `GOOS`/`GOARCH` |
+| ci-go | Linux x64/ARM64, GNU libc and musl (cgo) | Zig |
+| ci-go | Windows x64/ARM64 (cgo) | LLVM-MinGW |
+| ci-dotnet | Linux, Linux-musl, Windows x64/ARM64 | .NET SDK managed publishing |
 
-Image builds compile and link smoke programs for every listed target. The Rust
+Image builds include smoke builds for every listed target. Go and .NET additionally
+run native smoke programs. The new Go/.NET image builds still need validation on
+the FreeBSD runner; cross-target execution is not checked during image builds.
+The Rust
 smoke program calls C and uses threads; the Odin program allocates, prints, and
 checks floating-point arithmetic. Linux x64 prototypes also ran under FreeBSD's
 Linux compatibility layer. Windows and ARM64 runtime validation is still pending.
@@ -106,6 +116,61 @@ argument, for example `-L/path/to/target/lib -lfoo`. It does not resolve arbitra
 foreign libraries automatically. It supports executables; DLLs, custom entry
 points, sanitizers, and LTO require project-specific linking.
 
+#### Go
+
+`ci-go` installs Go from the quarterly package repository. Pure-Go cross-builds
+need no external linker:
+
+```sh
+CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -o app-linux-arm64 .
+CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -o app.exe .
+```
+
+For cgo, `go-cross TARGET GO-COMMAND [arguments...]` selects a compiler and
+enables cgo only for that command:
+
+```sh
+go-cross linux-amd64-gnu build -o app-linux .
+go-cross linux-arm64-musl build -o app-linux-arm64 .
+go-cross windows-amd64 build -o app.exe .
+go-cross windows-arm64 build -o app-arm64.exe .
+```
+
+Linux targets accept `amd64` or `arm64` with either `gnu` or `musl`.
+Target-specific third-party C/C++ libraries must be supplied by the project.
+The smoke tests exercise goroutines in pure Go and allocation/C calls in cgo.
+
+#### C# / .NET 10
+
+`ci-dotnet:10` includes the community FreeBSD .NET SDK **10.0.110**, installed
+under `/opt/dotnet`. `ci/dotnet/10/install-sdk.sh` pins the FreeBSD 15 x64 and
+ARM64 archives and their SHA-256 digests from
+[sec/dotnet-core-freebsd-source-build](https://github.com/sec/dotnet-core-freebsd-source-build/releases/tag/10.0.110-vmr).
+This selects the archive for the build host; publication follows the existing
+single-host workflow, not a multi-architecture manifest.
+
+.NET 10 is LTS, but FreeBSD SDK maintenance is community-provided. Update the
+SDK version and both hashes together when adopting a newer community release.
+`/usr/local/share/ci-dotnet-sdk.txt` records the version, URL, and checksum.
+The image installs ports OpenSSL and selects its `.35` ABI for the community SDK.
+
+```sh
+# Portable managed build, runnable with the installed FreeBSD runtime.
+dotnet build -c Release -p:UseAppHost=false
+dotnet bin/Release/net10.0/MyApp.dll
+
+# Self-contained managed deployments (runtime included).
+dotnet publish -c Release -r linux-arm64 --self-contained true
+dotnet publish -c Release -r linux-musl-x64 --self-contained true
+dotnet publish -c Release -r win-x64 --self-contained true
+```
+
+Build-time smoke checks publish all six Linux/Linux-musl/Windows x64/ARM64
+combinations and run a native managed program using tasks, cryptography, and ICU.
+Publishing restores target runtime packs from NuGet and requires network access.
+NativeAOT, ReadyToRun, and platform-specific workloads are outside this target
+matrix. P/Invoke dependencies must be supplied for the destination OS and CPU.
+
 #### Toolchain maintenance
 
 The Windows builder stage uses LLVM-MinGW `20251216` with LLVM `21.1.8`.
@@ -119,7 +184,7 @@ Only the installed Windows toolchain is copied from the builder stage; source
 trees and build dependencies are excluded from the final image. Both images
 need LLVM at runtime because the Windows wrappers use `/usr/local/llvm21`.
 
-The Rust and Odin Dockerfiles use the repository root as build context, including
+The Rust, Odin, Go, and .NET Dockerfiles use the repository root as build context, including
 shared files from `ci/cross`. `gmake` handles this automatically. For a direct build:
 
 ```sh

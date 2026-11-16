@@ -4,11 +4,11 @@ REGISTRY ?= git.9dev.tech
 OWNER ?= 9-developers
 FREEBSD_VERSION ?= 15.1
 PKG_QUARTER ?= 2026q4
-IMAGE_REVISION ?= 2
+IMAGE_REVISION ?= 3
 CONFIRMED_PKG_QUARTER ?=
 
 export CONTAINER_TOOL REGISTRY_TOOL REGISTRY OWNER FREEBSD_VERSION PKG_QUARTER IMAGE_REVISION CONFIRMED_PKG_QUARTER
-IMAGES = base node openjdk rust security odin
+IMAGES = base dotnet go node odin openjdk rust security
 
 .PHONY: all help login check-tools build publish publish-existing $(addprefix build-,$(IMAGES)) $(addprefix push-,$(IMAGES))
 all: build
@@ -30,7 +30,7 @@ check-tools:
 build: $(addprefix build-,$(IMAGES))
 build-base:
 	@sh ci/images.sh build base
-$(addprefix build-,node openjdk rust security odin): build-base
+$(addprefix build-,node openjdk rust security odin go dotnet): build-base
 	@sh ci/images.sh build $(@:build-%=%)
 publish: build
 	@sh ci/images.sh publish $(IMAGES)

@@ -1,0 +1,32 @@
+#!/bin/sh
+set -eu
+
+# Keep cgo and compiler settings scoped to this invocation.
+if [ "$#" -lt 2 ]; then
+	echo "Usage: go-cross TARGET GO-COMMAND [arguments...]" >&2
+	exit 1
+fi
+target=$1
+shift
+case "$target" in
+linux-amd64-gnu) arch=amd64; triple=x86_64-linux-gnu ;;
+linux-arm64-gnu) arch=arm64; triple=aarch64-linux-gnu ;;
+linux-amd64-musl) arch=amd64; triple=x86_64-linux-musl ;;
+linux-arm64-musl) arch=arm64; triple=aarch64-linux-musl ;;
+windows-amd64) arch=amd64; triple=x86_64-w64-mingw32 ;;
+windows-arm64) arch=arm64; triple=aarch64-w64-mingw32 ;;
+*) echo "Unsupported Go cross target: $target" >&2; exit 1 ;;
+esac
+export GOARCH=$arch CGO_ENABLED=1
+case "$target" in
+linux-*)
+	export GOOS=linux
+	export CC="zig cc -target $triple" CXX="zig c++ -target $triple"
+	;;
+windows-*)
+	export GOOS=windows
+	export CC="/opt/llvm-mingw/bin/$triple-clang"
+	export CXX="/opt/llvm-mingw/bin/$triple-clang++"
+	;;
+esac
+exec go "$@"

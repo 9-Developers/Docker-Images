@@ -16,6 +16,7 @@ version() {
 	case "$1" in
 	node) printf '24-%s' "$release" ;;
 	openjdk) printf '25-%s' "$release" ;;
+	dotnet) printf '10-%s' "$release" ;;
 	*) printf '%s' "$release" ;;
 	esac
 }
@@ -23,6 +24,7 @@ aliases() {
 	case "$1" in
 	node) echo "24 24-freebsd${freebsd}" ;;
 	openjdk) echo "25 25-freebsd${freebsd}" ;;
+	dotnet) echo "10 10-freebsd${freebsd}" ;;
 	*) echo "freebsd${freebsd}" ;;
 	esac
 }
@@ -59,11 +61,11 @@ build)
 		base=$digest
 		context=ci/base
 		;;
-	node | openjdk | rust | security | odin)
+	node | openjdk | rust | security | odin | go | dotnet)
 		base=$(image base):$release
 		digest=$("$tool" image inspect --format '{{index .Labels "tech.9dev.freebsd.upstream-digest"}}' "$base")
 		context=ci/$name
-		case "$name" in node) context=$context/24 ;; openjdk) context=$context/25 ;; esac
+		case "$name" in node) context=$context/24 ;; openjdk) context=$context/25 ;; dotnet) context=$context/10 ;; esac
 		;;
 	*)
 		echo "Unknown image: $name" >&2
@@ -71,8 +73,8 @@ build)
 		;;
 	esac
 	dockerfile=$(pwd)/$context/Dockerfile
-	# Rust and Odin share cross-toolchain sources under ci/cross.
-	case "$name" in rust | odin) context=. ;; esac
+	# Language images share cross-toolchain sources and smoke tests under ci/cross.
+	case "$name" in rust | odin | go | dotnet) context=. ;; esac
 	"$tool" build --no-cache --pull=never \
 		--file "$dockerfile" \
 		--build-arg "FREEBSD_BASE=$base" \
