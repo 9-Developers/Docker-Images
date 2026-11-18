@@ -28,6 +28,7 @@
 - `gmake publish` rebuilds everything; `gmake publish-existing` publishes local images with the current release settings. `gmake push-NAME` builds and publishes that image. Login requires `REGISTRY_USER` and `REGISTRY_TOKEN`.
 - Release tags are immutable. The publisher checks all requested remote tags and local images before pushing, then advances aliases only after release pushes succeed. A partial publication requires a new `IMAGE_REVISION`; do not publish concurrently.
 - `.forgejo/workflows/publish.yml` runs on a FreeBSD host, serializes publication, and verifies pushed Git tags against `gmake help`'s release value. Keep shell-based steps: JavaScript actions can assume unsupported platform-specific Node binaries.
+- `.forgejo/workflows/publish-one.yml` shares the full publisher's concurrency group. Select a single image to publish a missing release tag without bumping the shared revision. Keep its image choices in sync with `IMAGES` in the Makefile.
 
 ## Releases and quarterly packages
 
@@ -39,6 +40,7 @@ are listed at https://git.9dev.tech/9-Developers/Docker-Images/packages.
 | --- | --- | --- |
 | ci-node | `24-freebsd<version>-<quarter>-r<revision>` | `24`, `24-freebsd<version>` |
 | ci-openjdk | `25-freebsd<version>-<quarter>-r<revision>` | `25`, `25-freebsd<version>` |
+| ci-postgres | `18-freebsd<version>-<quarter>-r<revision>` | `18`, `18-freebsd<version>` |
 | ci-dotnet | `10-freebsd<version>-<quarter>-r<revision>` | `10`, `10-freebsd<version>` |
 | ci-base, ci-go, ci-rust, ci-security, ci-odin | `freebsd<version>-<quarter>-r<revision>` | `freebsd<version>` |
 

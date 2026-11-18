@@ -8,7 +8,7 @@ IMAGE_REVISION ?= 3
 CONFIRMED_PKG_QUARTER ?=
 
 export CONTAINER_TOOL REGISTRY_TOOL REGISTRY OWNER FREEBSD_VERSION PKG_QUARTER IMAGE_REVISION CONFIRMED_PKG_QUARTER
-IMAGES = base dotnet go node odin openjdk rust security
+IMAGES = base dotnet go node odin openjdk postgres rust security
 
 .PHONY: all help login check-tools build publish publish-existing $(addprefix build-,$(IMAGES)) $(addprefix push-,$(IMAGES))
 all: build
@@ -30,7 +30,7 @@ check-tools:
 build: $(addprefix build-,$(IMAGES))
 build-base:
 	@sh ci/images.sh build base
-$(addprefix build-,node openjdk rust security odin go dotnet): build-base
+$(addprefix build-,$(filter-out base,$(IMAGES))): build-base
 	@sh ci/images.sh build $(@:build-%=%)
 publish: build
 	@sh ci/images.sh publish $(IMAGES)

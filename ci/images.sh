@@ -16,6 +16,7 @@ version() {
 	case "$1" in
 	node) printf '24-%s' "$release" ;;
 	openjdk) printf '25-%s' "$release" ;;
+	postgres) printf '18-%s' "$release" ;;
 	dotnet) printf '10-%s' "$release" ;;
 	*) printf '%s' "$release" ;;
 	esac
@@ -24,6 +25,7 @@ aliases() {
 	case "$1" in
 	node) echo "24 24-freebsd${freebsd}" ;;
 	openjdk) echo "25 25-freebsd${freebsd}" ;;
+	postgres) echo "18 18-freebsd${freebsd}" ;;
 	dotnet) echo "10 10-freebsd${freebsd}" ;;
 	*) echo "freebsd${freebsd}" ;;
 	esac
@@ -61,11 +63,11 @@ build)
 		base=$digest
 		context=ci/base
 		;;
-	node | openjdk | rust | security | odin | go | dotnet)
+	node | openjdk | postgres | rust | security | odin | go | dotnet)
 		base=$(image base):$release
 		digest=$("$tool" image inspect --format '{{index .Labels "tech.9dev.freebsd.upstream-digest"}}' "$base")
 		context=ci/$name
-		case "$name" in node) context=$context/24 ;; openjdk) context=$context/25 ;; dotnet) context=$context/10 ;; esac
+		case "$name" in node) context=$context/24 ;; openjdk) context=$context/25 ;; postgres) context=$context/18 ;; dotnet) context=$context/10 ;; esac
 		;;
 	*)
 		echo "Unknown image: $name" >&2

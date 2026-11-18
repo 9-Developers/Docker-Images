@@ -16,6 +16,7 @@ Packages:
 - **ci-node**: Provides Node 24 LTS and npm
 - **ci-odin**: Provides Odin from quarterly packages with native FreeBSD, Linux x64/ARM64, and experimental Windows x64 targets
 - **ci-openjdk**: Provides OpenJDK 25 LTS
+- **ci-postgres**: PostgreSQL 18 database service for integration tests
 - **ci-rust**: Provides Rust managed by rustup with native FreeBSD and Linux/Windows x64/ARM64 targets
 - **ci-security**: Provides gitleaks, semgrep, socket, and trivy security scanning
 
@@ -41,6 +42,35 @@ podman run --rm -it \
 The language examples below run inside the selected image with your project as
 the working directory. Cross-compilation targets describe the generated
 binaries, not the host architectures on which the container can run.
+
+### PostgreSQL in Forgejo Actions
+
+For a containerized `ci-rust` job, use the service name `postgres` as the
+hostname in SQLx's `DATABASE_URL`. No host port mapping is needed.
+
+```yaml
+jobs:
+  test:
+    runs-on: ci-rust
+    services:
+      postgres:
+        image: git.9dev.tech/9-developers/ci-postgres:18-freebsd15.1-2026q4-r3
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: app_test
+    env:
+      DATABASE_URL: postgres://ci:ci@postgres:5432/app_test
+    # Add checkout, database readiness, migrations, and test steps here.
+```
+
+On first startup the image requires `POSTGRES_PASSWORD`; `POSTGRES_USER`
+defaults to `postgres`, and `POSTGRES_DB` defaults to the user name. A new
+service container gets an empty cluster. The moving aliases are `18` and
+`18-freebsd15.1`. To publish just this image, run **Publish one FreeBSD CI image**
+from the branch containing the image and select `postgres`. This rebuilds the
+base locally but pushes only Postgres. After publishing, run **Test PostgreSQL service
+from ci-rust** workflow to check DNS, readiness, and an authenticated `SELECT 1`.
 
 ## Cross-compilation
 
