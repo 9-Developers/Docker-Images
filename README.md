@@ -1,5 +1,8 @@
 # CI Images
 
+[![Discord][badge-discord]][link-discord]
+[![License][badge-bsd-3]][link-bsd-3]
+
 9 Developers CI images.
 
 Canonical repository:
@@ -206,5 +209,9 @@ Publishing restores target runtime packs from NuGet and requires network access.
 NativeAOT, ReadyToRun, and platform-specific workloads are outside this target
 matrix.
 
+[badge-discord]: https://img.shields.io/discord/452233740408717313?color=b4befe&label=discord&labelColor=1e1e2e&logo=discord&style=flat
+[link-discord]: https://discord.gg/KTgshSbEUU
+[badge-bsd-3]: https://img.shields.io/badge/License-BSD_3--Clause-89b4fa?labelColor=1e1e2e&logo=bsd&logoColor=white&style=flat
+[link-bsd-3]: https://opensource.org/license/bsd-3-clause
 [canonical-repo]: https://git.9dev.tech/9-Developers/Docker-Images
 [packages]: https://git.9dev.tech/9-Developers/Docker-Images/packages
