@@ -14,7 +14,7 @@ source_url=https://git.9dev.tech/9-Developers/Docker-Images
 image() { printf '%s/%s/ci-%s' "$registry" "$owner" "$1"; }
 version() {
 	case "$1" in
-	rust-node) printf '%s-bookworm-r%s' "$BOOKWORM_NODE_MAJOR" "$BOOKWORM_REVISION" ;;
+	railway) printf 'bookworm-r%s' "$BOOKWORM_REVISION" ;;
 	node) printf '24-%s' "$release" ;;
 	openjdk) printf '25-%s' "$release" ;;
 	postgres) printf '18-%s' "$release" ;;
@@ -24,10 +24,7 @@ version() {
 }
 aliases() {
 	case "$1" in
-	rust-node)
-		echo "${BOOKWORM_NODE_MAJOR}-bookworm"
-		if [ "$BOOKWORM_NODE_MAJOR" = "$BOOKWORM_DEFAULT_NODE_MAJOR" ]; then echo bookworm; fi
-		;;
+	railway) echo bookworm ;;
 	node) echo "24 24-freebsd${freebsd}" ;;
 	openjdk) echo "25 25-freebsd${freebsd}" ;;
 	postgres) echo "18 18-freebsd${freebsd}" ;;
@@ -36,8 +33,8 @@ aliases() {
 	esac
 }
 validate() {
-	if [ "$1" = rust-node ]; then
-		for n in "$BOOKWORM_NODE_MAJOR" "$BOOKWORM_DEFAULT_NODE_MAJOR" "$BOOKWORM_REVISION"; do
+	if [ "$1" = railway ]; then
+		for n in "$BOOKWORM_NODE_MAJOR" "$BOOKWORM_REVISION"; do
 			case "$n" in '' | 0* | *[!0-9]*)
 				echo "Invalid Bookworm release setting: $n" >&2
 				exit 1
@@ -71,9 +68,9 @@ build)
 	name=$1
 	validate "$name"
 	case "$name" in
-	rust-node)
-		context=ci/rust-node
-		set -- --os linux --pull=always --build-arg "NODE_MAJOR=$BOOKWORM_NODE_MAJOR"
+	railway)
+		context=ci/railway
+		set -- --os linux --pull=always --volume "$(sysctl -n compat.linux.emul_path)/proc:/proc:ro" --build-arg "NODE_MAJOR=$BOOKWORM_NODE_MAJOR"
 		;;
 	base)
 		upstream=ghcr.io/freebsd/freebsd-toolchain:$freebsd
@@ -93,7 +90,7 @@ build)
 		exit 1
 		;;
 	esac
-	if [ "$name" != rust-node ]; then
+	if [ "$name" != railway ]; then
 		set -- --pull=never --build-arg "FREEBSD_BASE=$base" --build-arg "FREEBSD_CI_BASE=$base" \
 			--label "tech.9dev.freebsd.upstream-digest=${digest##*@}" \
 			--label "tech.9dev.freebsd.package-quarter=$quarter"
@@ -119,7 +116,7 @@ publish)
 		# Skopeo's docker transport always queries the registry, never local storage.
 		if "$registry_tool" inspect --raw "docker://$ref" >/dev/null 2>"$error"; then
 			setting=IMAGE_REVISION
-			if [ "$name" = rust-node ]; then setting=BOOKWORM_REVISION; fi
+			if [ "$name" = railway ]; then setting=BOOKWORM_REVISION; fi
 			echo "Release already exists: $ref (increment $setting)" >&2
 			exit 1
 		elif ! grep -Eiq 'manifest unknown|name unknown' "$error"; then

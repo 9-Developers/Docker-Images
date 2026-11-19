@@ -27,7 +27,7 @@ Packages:
 
 ### Linux images
 
-- **ci-rust-node**: Debian Bookworm with Node 24, npm, rustup-managed Rust, Railway CLI, and crane
+- **ci-railway**: Railway deployment image with Railway CLI, crane, Node 24, npm, and rustup-managed Rust on Debian Bookworm
 
 ## Using the images
 
@@ -52,11 +52,11 @@ The language examples below run inside the selected image with your project as
 the working directory. Cross-compilation targets describe the generated
 binaries, not the host architectures on which the container can run.
 
-### Debian Bookworm with Rust and Node
+### Railway deployments on Debian Bookworm
 
-Use `git.9dev.tech/9-developers/ci-rust-node:24-bookworm` for Linux jobs that
-should stay on Node 24. Pin `:24-bookworm-r1` for the exact first build, or
-use `:bookworm` to follow the designated default Node major. Use a
+Use `git.9dev.tech/9-developers/ci-railway:bookworm` for Linux jobs that build
+and publish images for Railway. Pin `:bookworm-r1` for the first release, or
+follow `:bookworm` for the latest Bookworm build. Use a
 `rust-toolchain.toml` to select a Rust release; jobs installing extra toolchains
 need network access and write access to the rustup directories (root by default).
 
@@ -64,16 +64,14 @@ The `railway` command is preinstalled. For CI deployments, supply a Railway
 project token through the job's `RAILWAY_TOKEN` secret at runtime.
 Use `crane` to inspect or copy registry images without a local container daemon.
 
-Run `gmake build-rust-node` on the FreeBSD runner with Linuxulator enabled.
+Run `gmake build-railway` on the FreeBSD runner with Linuxulator enabled.
 The build uses native-architecture Linux binaries and tests Node and Rust during
-the build. To publish, select `rust-node` in **Publish one CI image**.
+the build. To publish, select `railway` in **Publish one CI image**.
 This image is released separately from the aggregate FreeBSD build and publish.
 
-For each rebuild of a Node major, increment `BOOKWORM_REVISION` in the Makefile.
-For a new major, change `BOOKWORM_NODE_MAJOR` and start its revision at 1.
-Only builds matching `BOOKWORM_DEFAULT_NODE_MAJOR` advance `:bookworm`.
-To promote an already published major, select it as the default and publish
-its next revision.
+Increment `BOOKWORM_REVISION` in the Makefile for each Bookworm rebuild,
+including when changing `BOOKWORM_NODE_MAJOR`. The publisher pushes the
+immutable `bookworm-r<revision>` tag before advancing `bookworm`.
 
 ### PostgreSQL in Forgejo Actions
 

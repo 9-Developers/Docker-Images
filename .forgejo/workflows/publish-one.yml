@@ -16,8 +16,8 @@ on:
           - odin
           - openjdk
           - postgres
+          - railway
           - rust
-          - rust-node
           - security
 
 concurrency:
@@ -66,7 +66,7 @@ jobs:
         run: |
           set -eu
           case "$IMAGE" in
-            base|dotnet|go|node|odin|openjdk|postgres|rust|rust-node|security) exec gmake "push-$IMAGE" ;;
+            base|dotnet|go|node|odin|openjdk|postgres|railway|rust|security) exec gmake "push-$IMAGE" ;;
             *) echo "Unknown image: $IMAGE" >&2; exit 1 ;;
           esac
       - name: Remove registry credentials
