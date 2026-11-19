@@ -7,6 +7,11 @@ ENV RUSTUP_HOME=/usr/local/rustup \
     PATH=/usr/local/cargo/bin:$PATH
 
 RUN node -e 'if (process.platform !== "linux" || process.versions.node.split(".")[0] !== process.argv[1]) process.exit(1)' "$NODE_MAJOR"
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends postgresql-client \
+    && rm -rf /var/lib/apt/lists/* \
+    && psql --version
+
 RUN set -eu; \
     curl --proto '=https' --tlsv1.2 -fsS https://sh.rustup.rs -o /tmp/rustup-init.sh; \
     sh /tmp/rustup-init.sh -y --no-modify-path --profile minimal --default-toolchain stable; \

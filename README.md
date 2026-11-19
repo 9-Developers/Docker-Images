@@ -27,7 +27,7 @@ Packages:
 
 ### Linux images
 
-- **ci-railway**: Railway deployment image with Railway CLI, crane, Node 24, npm, and rustup-managed Rust on Debian Bookworm
+- **ci-railway**: Railway deployment image with Railway CLI, crane, `psql`, Node 24, npm, and rustup-managed Rust on Debian Bookworm
 
 ## Using the images
 
@@ -55,7 +55,7 @@ binaries, not the host architectures on which the container can run.
 ### Railway deployments on Debian Bookworm
 
 Use `git.9dev.tech/9-developers/ci-railway:bookworm` for Linux jobs that build
-and publish images for Railway. Pin `:bookworm-r1` for the first release, or
+and publish images for Railway. Pin `:bookworm-r3` for the release with `psql`, or
 follow `:bookworm` for the latest Bookworm build. Use a
 `rust-toolchain.toml` to select a Rust release; jobs installing extra toolchains
 need network access and write access to the rustup directories (root by default).
