@@ -22,6 +22,13 @@ RUN set -eu; \
     /tmp/smoke; \
     rm /tmp/smoke /tmp/smoke.rs
 
+ARG SQLX_CLI_VERSION=0.8.6
+RUN cargo install --locked --version "=${SQLX_CLI_VERSION}" \
+        --no-default-features --features postgres,rustls sqlx-cli \
+    && rm -rf "$CARGO_HOME/registry" \
+    && sqlx --version \
+    && cargo sqlx --version
+
 ARG TAILWINDCSS_VERSION=4.3.3
 RUN npm install --global @tailwindcss/cli@${TAILWINDCSS_VERSION} tailwindcss@${TAILWINDCSS_VERSION} \
     && tailwindcss --help

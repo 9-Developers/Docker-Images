@@ -27,7 +27,7 @@ Packages:
 
 ### Linux images
 
-- **ci-railway**: Railway deployment image with Railway CLI, crane, `psql`, Node 24, npm, and rustup-managed Rust on Debian Bookworm
+- **ci-railway**: Railway deployment image with Railway CLI, crane, `psql`, SQLx CLI, Node 24, npm, and rustup-managed Rust on Debian Bookworm
 
 ## Using the images
 
@@ -61,13 +61,17 @@ release). The PostgreSQL client (`psql`) is included starting with `:bookworm-r3
 `rust-toolchain.toml` to select a Rust release; jobs installing extra toolchains
 need network access and write access to the rustup directories (root by default).
 
+Starting with `:bookworm-r4`, SQLx CLI 0.8.6 supports PostgreSQL with Rustls.
+Use `sqlx migrate run` for migrations or `cargo sqlx prepare` to generate offline
+query metadata. Supply `DATABASE_URL` at job runtime.
+
 The `railway` command is preinstalled. For CI deployments, supply a Railway
 project token through the job's `RAILWAY_TOKEN` secret at runtime.
 Use `crane` to inspect or copy registry images without a local container daemon.
 
 Run `gmake build-railway` on the FreeBSD runner with Linuxulator enabled.
-The build uses native-architecture Linux binaries and tests Node and Rust during
-the build. To publish, select `railway` in **Publish one CI image**.
+The build uses native-architecture Linux binaries and tests Node, Rust, and both
+SQLx CLI entry points during the build. To publish, select `railway` in **Publish one CI image**.
 This image is released separately from the aggregate FreeBSD build and publish.
 
 Increment `BOOKWORM_REVISION` in the Makefile for each Bookworm rebuild,
