@@ -18,8 +18,8 @@ RUN set -eu; \
     rm /tmp/smoke /tmp/smoke.rs
 
 ARG TAILWINDCSS_VERSION=4.3.3
-RUN npm install --global @tailwindcss/cli@${TAILWINDCSS_VERSION} tailwindcss@${TAILWINDCSS_VERSION}; \
-    tailwindcss --version
+RUN npm install --global @tailwindcss/cli@${TAILWINDCSS_VERSION} tailwindcss@${TAILWINDCSS_VERSION} \
+    && tailwindcss --help
 
 ARG RAILWAY_CLI_VERSION=5.75.0
 RUN npm install --global "@railway/cli@${RAILWAY_CLI_VERSION}" \
