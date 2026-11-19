@@ -7,8 +7,8 @@ ENV RUSTUP_HOME=/usr/local/rustup \
     PATH=/usr/local/cargo/bin:$PATH
 
 RUN node -e 'if (process.platform !== "linux" || process.versions.node.split(".")[0] !== process.argv[1]) process.exit(1)' "$NODE_MAJOR"
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends postgresql-client \
+RUN apt-get -o APT::Cache-Start=134217728 update \
+    && apt-get -o APT::Cache-Start=134217728 install -y --no-install-recommends postgresql-client \
     && rm -rf /var/lib/apt/lists/* \
     && psql --version
 
