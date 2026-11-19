@@ -8,13 +8,19 @@ IMAGE_REVISION ?= 3
 CONFIRMED_PKG_QUARTER ?=
 
 export CONTAINER_TOOL REGISTRY_TOOL REGISTRY OWNER FREEBSD_VERSION PKG_QUARTER IMAGE_REVISION CONFIRMED_PKG_QUARTER
-IMAGES = base dotnet go node odin openjdk postgres rust security
+BOOKWORM_NODE_MAJOR ?= 24
+BOOKWORM_DEFAULT_NODE_MAJOR ?= 24
+BOOKWORM_REVISION ?= 1
+export BOOKWORM_NODE_MAJOR BOOKWORM_DEFAULT_NODE_MAJOR BOOKWORM_REVISION
+FREEBSD_IMAGES = base dotnet go node odin openjdk postgres rust security
+IMAGES = $(FREEBSD_IMAGES) rust-node
 
 .PHONY: all help login check-tools build publish publish-existing $(addprefix build-,$(IMAGES)) $(addprefix push-,$(IMAGES))
 all: build
 help:
 	@echo "Use gmake on FreeBSD (GNU make required)."
-	@echo "build / build-NAME: refresh and build images, base first"
+	@echo "build / publish / publish-existing operate on the FreeBSD release"
+	@echo "build-NAME: build one image (rust-node builds directly from Debian-based Node)"
 	@echo "publish: build all images, publish release tags, then moving aliases"
 	@echo "publish-existing: publish already-built local release images without rebuilding"
 	@echo "check-tools: verify Podman and Skopeo access"
@@ -27,14 +33,16 @@ login:
 	@sh ci/images.sh login
 check-tools:
 	@sh ci/images.sh check-tools
-build: $(addprefix build-,$(IMAGES))
+build: $(addprefix build-,$(FREEBSD_IMAGES))
+build-rust-node:
+	@sh ci/images.sh build rust-node
 build-base:
 	@sh ci/images.sh build base
-$(addprefix build-,$(filter-out base,$(IMAGES))): build-base
+$(addprefix build-,$(filter-out base,$(FREEBSD_IMAGES))): build-base
 	@sh ci/images.sh build $(@:build-%=%)
 publish: build
-	@sh ci/images.sh publish $(IMAGES)
+	@sh ci/images.sh publish $(FREEBSD_IMAGES)
 publish-existing: check-tools
-	@sh ci/images.sh publish $(IMAGES)
+	@sh ci/images.sh publish $(FREEBSD_IMAGES)
 $(addprefix push-,$(IMAGES)): push-%: build-%
 	@sh ci/images.sh publish $*

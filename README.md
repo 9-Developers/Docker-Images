@@ -1,6 +1,6 @@
-# FreeBSD CI Images
+# CI Images
 
-Native FreeBSD OCI images.
+9 Developers CI images.
 
 Canonical repository:
 [https://git.9dev.tech/9-Developers/Docker-Images][canonical-repo]
@@ -9,6 +9,8 @@ Packages:
 [https://git.9dev.tech/9-Developers/Docker-Images/packages][packages]
 
 ## Images
+
+### FreeBSD images
 
 - **ci-base**: FreeBSD 15.1 image on quarterly ports tree
 - **ci-dotnet**: Provides .NET 10 LTS toolchain
@@ -20,9 +22,13 @@ Packages:
 - **ci-rust**: Provides Rust managed by rustup with native FreeBSD and Linux/Windows x64/ARM64 targets
 - **ci-security**: Provides gitleaks, semgrep, socket, and trivy security scanning
 
+### Linux images
+
+- **ci-rust-node**: Debian Bookworm with Node 24, npm, rustup-managed Rust, Railway CLI, and crane
+
 ## Using the images
 
-These images require a native FreeBSD host with rootful Podman configured for
+The FreeBSD images require a native FreeBSD host with rootful Podman configured for
 FreeBSD containers. They do not run in a standard Linux container VM.
 
 Images are published as `git.9dev.tech/9-developers/ci-NAME`. Check
@@ -42,6 +48,29 @@ podman run --rm -it \
 The language examples below run inside the selected image with your project as
 the working directory. Cross-compilation targets describe the generated
 binaries, not the host architectures on which the container can run.
+
+### Debian Bookworm with Rust and Node
+
+Use `git.9dev.tech/9-developers/ci-rust-node:24-bookworm` for Linux jobs that
+should stay on Node 24. Pin `:24-bookworm-r1` for the exact first build, or
+use `:bookworm` to follow the designated default Node major. Use a
+`rust-toolchain.toml` to select a Rust release; jobs installing extra toolchains
+need network access and write access to the rustup directories (root by default).
+
+The `railway` command is preinstalled. For CI deployments, supply a Railway
+project token through the job's `RAILWAY_TOKEN` secret at runtime.
+Use `crane` to inspect or copy registry images without a local container daemon.
+
+Run `gmake build-rust-node` on the FreeBSD runner with Linuxulator enabled.
+The build uses native-architecture Linux binaries and tests Node and Rust during
+the build. To publish, select `rust-node` in **Publish one CI image**.
+This image is released separately from the aggregate FreeBSD build and publish.
+
+For each rebuild of a Node major, increment `BOOKWORM_REVISION` in the Makefile.
+For a new major, change `BOOKWORM_NODE_MAJOR` and start its revision at 1.
+Only builds matching `BOOKWORM_DEFAULT_NODE_MAJOR` advance `:bookworm`.
+To promote an already published major, select it as the default and publish
+its next revision.
 
 ### PostgreSQL in Forgejo Actions
 
@@ -67,7 +96,7 @@ jobs:
 On first startup the image requires `POSTGRES_PASSWORD`; `POSTGRES_USER`
 defaults to `postgres`, and `POSTGRES_DB` defaults to the user name. A new
 service container gets an empty cluster. The moving aliases are `18` and
-`18-freebsd15.1`. To publish just this image, run **Publish one FreeBSD CI image**
+`18-freebsd15.1`. To publish just this image, run **Publish one CI image**
 from the branch containing the image and select `postgres`. This rebuilds the
 base locally but pushes only Postgres. After publishing, run **Test PostgreSQL service
 from ci-rust** workflow to check DNS, readiness, and an authenticated `SELECT 1`.
@@ -78,16 +107,16 @@ from ci-rust** workflow to check DNS, readiness, and an authenticated `SELECT 1`
 `ci-dotnet` supports managed cross-publishing through its SDK.
 Native builds remain the default.
 
-| Image     | Cross targets                            | Toolchain                                |
-| --------- | ---------------------------------------- | ---------------------------------------- |
-| ci-rust   | Linux x64/ARM64, GNU libc and musl         | Zig + cargo-zigbuild                      |
-| ci-rust   | Windows x64/ARM64                         | LLVM-MinGW, Rust `windows-gnullvm` targets |
-| ci-odin   | Linux x64/ARM64, GNU libc                  | Odin object generation + Zig linking      |
-| ci-odin   | Windows x64 (experimental)                | Odin object generation + LLVM-MinGW       |
-| ci-go     | FreeBSD, Linux, Windows x64/ARM64 (pure Go) | Go `GOOS`/`GOARCH`                        |
-| ci-go     | Linux x64/ARM64, GNU libc and musl (cgo)   | Zig                                      |
-| ci-go     | Windows x64/ARM64 (cgo)                    | LLVM-MinGW                                |
-| ci-dotnet | Linux, Linux-musl, Windows x64/ARM64       | .NET SDK managed publishing               |
+| Image     | Cross targets                               | Toolchain                                  |
+| --------- | ------------------------------------------- | ------------------------------------------ |
+| ci-rust   | Linux x64/ARM64, GNU libc and musl          | Zig + cargo-zigbuild                       |
+| ci-rust   | Windows x64/ARM64                           | LLVM-MinGW, Rust `windows-gnullvm` targets |
+| ci-odin   | Linux x64/ARM64, GNU libc                   | Odin object generation + Zig linking       |
+| ci-odin   | Windows x64 (experimental)                  | Odin object generation + LLVM-MinGW        |
+| ci-go     | FreeBSD, Linux, Windows x64/ARM64 (pure Go) | Go `GOOS`/`GOARCH`                         |
+| ci-go     | Linux x64/ARM64, GNU libc and musl (cgo)    | Zig                                        |
+| ci-go     | Windows x64/ARM64 (cgo)                     | LLVM-MinGW                                 |
+| ci-dotnet | Linux, Linux-musl, Windows x64/ARM64        | .NET SDK managed publishing                |
 
 Cross-build checks do not establish runtime compatibility; test generated
 binaries on their destination platforms. Odin Windows support is experimental.

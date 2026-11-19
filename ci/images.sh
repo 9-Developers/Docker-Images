@@ -14,6 +14,7 @@ source_url=https://git.9dev.tech/9-Developers/Docker-Images
 image() { printf '%s/%s/ci-%s' "$registry" "$owner" "$1"; }
 version() {
 	case "$1" in
+	rust-node) printf '%s-bookworm-r%s' "$BOOKWORM_NODE_MAJOR" "$BOOKWORM_REVISION" ;;
 	node) printf '24-%s' "$release" ;;
 	openjdk) printf '25-%s' "$release" ;;
 	postgres) printf '18-%s' "$release" ;;
@@ -23,6 +24,10 @@ version() {
 }
 aliases() {
 	case "$1" in
+	rust-node)
+		echo "${BOOKWORM_NODE_MAJOR}-bookworm"
+		if [ "$BOOKWORM_NODE_MAJOR" = "$BOOKWORM_DEFAULT_NODE_MAJOR" ]; then echo bookworm; fi
+		;;
 	node) echo "24 24-freebsd${freebsd}" ;;
 	openjdk) echo "25 25-freebsd${freebsd}" ;;
 	postgres) echo "18 18-freebsd${freebsd}" ;;
@@ -31,6 +36,16 @@ aliases() {
 	esac
 }
 validate() {
+	if [ "$1" = rust-node ]; then
+		for n in "$BOOKWORM_NODE_MAJOR" "$BOOKWORM_DEFAULT_NODE_MAJOR" "$BOOKWORM_REVISION"; do
+			case "$n" in '' | 0* | *[!0-9]*)
+				echo "Invalid Bookworm release setting: $n" >&2
+				exit 1
+				;;
+			esac
+		done
+		return
+	fi
 	printf '%s\n' "$quarter" | grep -Eq '^[0-9]{4}q[1-4]$'
 	printf '%s\n' "$revision" | grep -Eq '^[1-9][0-9]*$'
 	printf '%s\n' "$freebsd" | grep -Eq '^[0-9]+\.[0-9]+$'
@@ -53,9 +68,13 @@ login)
 	printf '%s' "$REGISTRY_TOKEN" | "$tool" login "$registry" --username "$REGISTRY_USER" --password-stdin
 	;;
 build)
-	validate
 	name=$1
+	validate "$name"
 	case "$name" in
+	rust-node)
+		context=ci/rust-node
+		set -- --os linux --pull=always --build-arg "NODE_MAJOR=$BOOKWORM_NODE_MAJOR"
+		;;
 	base)
 		upstream=ghcr.io/freebsd/freebsd-toolchain:$freebsd
 		"$tool" pull "$upstream"
@@ -74,31 +93,34 @@ build)
 		exit 1
 		;;
 	esac
+	if [ "$name" != rust-node ]; then
+		set -- --pull=never --build-arg "FREEBSD_BASE=$base" --build-arg "FREEBSD_CI_BASE=$base" \
+			--label "tech.9dev.freebsd.upstream-digest=${digest##*@}" \
+			--label "tech.9dev.freebsd.package-quarter=$quarter"
+	fi
 	dockerfile=$(pwd)/$context/Dockerfile
 	# Language images share cross-toolchain sources and smoke tests under ci/cross.
 	case "$name" in rust | odin | go | dotnet) context=. ;; esac
-	"$tool" build --no-cache --pull=never \
+	"$tool" build --no-cache "$@" \
 		--file "$dockerfile" \
-		--build-arg "FREEBSD_BASE=$base" \
-		--build-arg "FREEBSD_CI_BASE=$base" \
 		--label "org.opencontainers.image.source=$source_url" \
 		--label "org.opencontainers.image.revision=$(git rev-parse HEAD)" \
 		--label "org.opencontainers.image.version=$(version "$name")" \
 		--label "org.opencontainers.image.created=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-		--label "tech.9dev.freebsd.upstream-digest=${digest##*@}" \
-		--label "tech.9dev.freebsd.package-quarter=$quarter" \
 		--tag "$(image "$name"):$(version "$name")" "$context"
 	;;
 publish)
-	validate
 	# Check every tag before pushing; fail closed on auth/network errors.
 	error=$(mktemp)
 	trap 'rm -f "$error"' EXIT HUP INT TERM
 	for name; do
+		validate "$name"
 		ref=$(image "$name"):$(version "$name")
 		# Skopeo's docker transport always queries the registry, never local storage.
 		if "$registry_tool" inspect --raw "docker://$ref" >/dev/null 2>"$error"; then
-			echo "Release already exists: $ref (increment IMAGE_REVISION)" >&2
+			setting=IMAGE_REVISION
+			if [ "$name" = rust-node ]; then setting=BOOKWORM_REVISION; fi
+			echo "Release already exists: $ref (increment $setting)" >&2
 			exit 1
 		elif ! grep -Eiq 'manifest unknown|name unknown' "$error"; then
 			cat "$error" >&2

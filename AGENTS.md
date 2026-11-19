@@ -2,6 +2,11 @@
 
 ## Build and verification
 
+- Exception to the FreeBSD release guidance below: `ci-rust-node` is a Linux
+  Bookworm image built directly from the official Node image via Linuxulator.
+  Use `build-rust-node` / `push-rust-node` or the single-image workflow. It has
+  independent `BOOKWORM_*` release settings and is outside the aggregate targets.
+
 - These are native FreeBSD OCI images: builds require a FreeBSD host with rootful Podman, not a Linux container VM on macOS. Use GNU make (`gmake`) from the repository root.
 - `Makefile` is the release-settings source of truth; invoking `sh ci/images.sh` directly uses different revision defaults. Prefer make targets.
 - Before building, verify the public FreeBSD quarterly package branch and set `CONFIRMED_PKG_QUARTER` to match `PKG_QUARTER`. The public `quarterly` URL rolls forward; this variable is an operator attestation, not a provenance check.
