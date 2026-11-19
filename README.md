@@ -55,8 +55,9 @@ binaries, not the host architectures on which the container can run.
 ### Railway deployments on Debian Bookworm
 
 Use `git.9dev.tech/9-developers/ci-railway:bookworm` for Linux jobs that build
-and publish images for Railway. Pin `:bookworm-r3` for the release with `psql`, or
-follow `:bookworm` for the latest Bookworm build. Use a
+and publish images for Railway. The `:bookworm` alias follows the latest published
+build. To pin a release, use an immutable tag such as `:bookworm-r1` (the first
+release). The PostgreSQL client (`psql`) is included starting with `:bookworm-r3`. Use a
 `rust-toolchain.toml` to select a Rust release; jobs installing extra toolchains
 need network access and write access to the rustup directories (root by default).
 
@@ -70,7 +71,8 @@ the build. To publish, select `railway` in **Publish one CI image**.
 This image is released separately from the aggregate FreeBSD build and publish.
 
 Increment `BOOKWORM_REVISION` in the Makefile for each Bookworm rebuild,
-including when changing `BOOKWORM_NODE_MAJOR`. The publisher pushes the
+including when changing `BOOKWORM_NODE_MAJOR`. Run `gmake railway-tag` to print
+the release tag configured for this checkout. The publisher pushes the
 immutable `bookworm-r<revision>` tag before advancing `bookworm`.
 
 ### PostgreSQL in Forgejo Actions

@@ -14,12 +14,13 @@ export BOOKWORM_NODE_MAJOR BOOKWORM_REVISION
 FREEBSD_IMAGES = base dotnet go node odin openjdk postgres rust security
 IMAGES = $(FREEBSD_IMAGES) railway
 
-.PHONY: all help login check-tools build publish publish-existing $(addprefix build-,$(IMAGES)) $(addprefix push-,$(IMAGES))
+.PHONY: all help railway-tag login check-tools build publish publish-existing $(addprefix build-,$(IMAGES)) $(addprefix push-,$(IMAGES))
 all: build
 help:
 	@echo "Use gmake on FreeBSD (GNU make required)."
 	@echo "build / publish / publish-existing operate on the FreeBSD release"
 	@echo "build-NAME: build one image (railway builds directly from Debian-based Node)"
+	@echo "railway-tag: print the configured Railway release tag"
 	@echo "publish: build all images, publish release tags, then moving aliases"
 	@echo "publish-existing: publish already-built local release images without rebuilding"
 	@echo "check-tools: verify Podman and Skopeo access"
@@ -28,6 +29,8 @@ help:
 	@echo "Images: $(IMAGES)"
 	@echo "Release: freebsd$(FREEBSD_VERSION)-$(PKG_QUARTER)-r$(IMAGE_REVISION)"
 	@echo "Set CONFIRMED_PKG_QUARTER=$(PKG_QUARTER) after verifying the public package branch."
+railway-tag:
+	@printf 'bookworm-r%s\n' "$(BOOKWORM_REVISION)"
 login:
 	@sh ci/images.sh login
 check-tools:
