@@ -4,6 +4,10 @@ on: workflow_dispatch
 jobs:
   smoke:
     runs-on: ci-rust
+
+    env:
+      DATABASE_URL: postgres://ci:ci@postgres:5432/app_test
+
     services:
       postgres:
         image: git.9dev.tech/9-developers/ci-postgres:18
@@ -11,8 +15,7 @@ jobs:
           POSTGRES_USER: ci
           POSTGRES_PASSWORD: ci
           POSTGRES_DB: app_test
-    env:
-      DATABASE_URL: postgres://ci:ci@postgres:5432/app_test
+
     steps:
       - name: Query the database over the job network
         shell: sh
