@@ -65,6 +65,10 @@ Starting with `:bookworm-r4`, SQLx CLI 0.8.6 supports PostgreSQL with Rustls.
 Use `sqlx migrate run` for migrations or `cargo sqlx prepare` to generate offline
 query metadata. Supply `DATABASE_URL` at job runtime.
 
+Starting with `:bookworm-r5`, the standalone `tailwindcss` CLI (4.3.3) can
+compile stylesheets containing `@import "tailwindcss";` without a project-local
+npm install. For example: `tailwindcss -i src/style/main.css -o main.css --minify`.
+
 The `railway` command is preinstalled. For CI deployments, supply a Railway
 project token through the job's `RAILWAY_TOKEN` secret at runtime.
 Use `crane` to inspect or copy registry images without a local container daemon.

@@ -30,8 +30,23 @@ RUN cargo install --locked --version "=${SQLX_CLI_VERSION}" \
     && cargo sqlx --version
 
 ARG TAILWINDCSS_VERSION=4.3.3
-RUN npm install --global @tailwindcss/cli@${TAILWINDCSS_VERSION} tailwindcss@${TAILWINDCSS_VERSION} \
-    && tailwindcss --help
+RUN set -eu; \
+    case "$(dpkg --print-architecture)" in \
+        amd64) arch=x64; sha=dc61b3ac6b8c9ca874c0cc4c57b2409791a64c5540404ca5f5367360babc313a ;; \
+        arm64) arch=arm64; sha=55fd0b241214eff3de1e8ee4f22796662f2d2e7a49bcfca7477cfd0bac398195 ;; \
+        *) echo "Unsupported architecture for Tailwind CSS" >&2; exit 1 ;; \
+    esac; \
+    curl -fsSL "https://github.com/tailwindlabs/tailwindcss/releases/download/v${TAILWINDCSS_VERSION}/tailwindcss-linux-${arch}" -o /usr/local/bin/tailwindcss; \
+    echo "$sha  /usr/local/bin/tailwindcss" | sha256sum -c -; \
+    chmod 0755 /usr/local/bin/tailwindcss; \
+    work=$(mktemp -d); \
+    cd "$work"; \
+    mkdir -p src/style; \
+    printf '%s\n' '@import "tailwindcss";' '@source inline("underline");' > src/style/main.css; \
+    tailwindcss -i src/style/main.css -o main.css --minify; \
+    grep -Fq '.underline{' main.css; \
+    cd /; \
+    rm -rf "$work"
 
 ARG RAILWAY_CLI_VERSION=5.75.0
 RUN npm install --global "@railway/cli@${RAILWAY_CLI_VERSION}" \

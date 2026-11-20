@@ -7,7 +7,7 @@ on:
         description: Image to build and publish
         type: choice
         required: true
-        default: postgres
+        default: base
         options:
           - base
           - dotnet
