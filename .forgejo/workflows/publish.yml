@@ -12,7 +12,8 @@ concurrency:
 
 jobs:
   publish:
-    runs-on: freebsd-15.1-host
+    if: github.event_name == 'push' || github.ref == 'refs/heads/main'
+    runs-on: freebsd-image-publish
     env:
       CONTAINER_TOOL: /usr/local/bin/ci-podman
       REGISTRY_TOOL: /usr/local/bin/ci-skopeo
@@ -25,6 +26,7 @@ jobs:
           CHECKOUT_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPOSITORY: ${{ github.repository }}
           COMMIT: ${{ github.sha }}
+          REF: ${{ github.ref }}
         run: |
           set -eu
           mkdir -p "$GITHUB_WORKSPACE"
@@ -34,6 +36,16 @@ jobs:
           git -c "http.extraHeader=Authorization: Basic $auth" fetch --depth=1 \
             "https://git.9dev.tech/$REPOSITORY.git" "$COMMIT"
           git checkout --force --detach FETCH_HEAD
+          case "$REF" in
+            refs/tags/*)
+              git -c "http.extraHeader=Authorization: Basic $auth" fetch \
+                "https://git.9dev.tech/$REPOSITORY.git" refs/heads/main:refs/remotes/publisher/main
+              if ! git merge-base --is-ancestor "$COMMIT" refs/remotes/publisher/main; then
+                printf '%s\n' 'The release tag must point to a commit on main.' >&2
+                exit 1
+              fi
+              ;;
+          esac
           git clean -ffd
       - name: Verify release tag
         shell: sh

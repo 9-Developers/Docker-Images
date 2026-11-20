@@ -108,18 +108,18 @@ release. Retrying a partially published release requires a new revision.
 
 ## Forgejo Actions setup
 
-1. Enable Actions and configure this mapping-style runner label:
+1. Enable Actions and register the Kirrahe runner at the Docker-Images repository scope. Configure this mapping-style runner label:
 
    ```yaml
    labels:
-     freebsd-15.1-host:
+     freebsd-image-publish:
        backend: host
    ```
 
 2. Give the runner account access to Git, GNU make, standard shell utilities, and the privileged container wrappers below. Builds execute directly on that FreeBSD host.
 3. Set repository secrets `REGISTRY_USER` and `REGISTRY_TOKEN` for an account with package write access to `9-Developers`.
 4. After checking public package status, set the Actions variable `CONFIRMED_PKG_QUARTER` to match the Makefile. Recheck before each release.
-5. Commit release settings and invoke **Publish FreeBSD CI images** manually, or push the matching tag:
+5. Commit release settings to `main` and invoke **Publish FreeBSD CI images** manually from `main`, or push the matching tag for a commit on `main`:
 
    ```sh
    release=$(gmake help | sed -n 's/^Release: //p')

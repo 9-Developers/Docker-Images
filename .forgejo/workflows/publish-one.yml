@@ -26,7 +26,8 @@ concurrency:
 
 jobs:
   publish:
-    runs-on: freebsd-15.1-host
+    if: github.ref == 'refs/heads/main'
+    runs-on: freebsd-image-publish
     env:
       CONTAINER_TOOL: /usr/local/bin/ci-podman
       REGISTRY_TOOL: /usr/local/bin/ci-skopeo
