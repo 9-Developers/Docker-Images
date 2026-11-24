@@ -29,7 +29,7 @@ RUN cargo install --locked --version "=${SQLX_CLI_VERSION}" \
     && sqlx --version \
     && cargo sqlx --version
 
-ARG TAILWINDCSS_VERSION=4.3.3
+ARG TAILWINDCSS_VERSION=4.3.5
 RUN set -eu; \
     case "$(dpkg --print-architecture)" in \
         amd64) arch=x64; sha=dc61b3ac6b8c9ca874c0cc4c57b2409791a64c5540404ca5f5367360babc313a ;; \
