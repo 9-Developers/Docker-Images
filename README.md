@@ -22,7 +22,7 @@ Packages:
 - **ci-odin**: Provides Odin from quarterly packages with native FreeBSD, Linux x64/ARM64, and experimental Windows x64 targets
 - **ci-openjdk**: Provides OpenJDK 25 LTS
 - **ci-postgres**: PostgreSQL 18 database service for integration tests
-- **ci-rust**: Provides Rust managed by rustup with native FreeBSD and Linux/Windows x64/ARM64 targets
+- **ci-rust**: Provides Rust managed by rustup with native FreeBSD, FreeBSD ARM64, and Linux/Windows x64/ARM64 targets
 - **ci-security**: Provides gitleaks, semgrep, socket, and trivy security scanning
 
 ### Linux images
@@ -120,6 +120,7 @@ Native builds remain the default.
 
 | Image     | Cross targets                               | Toolchain                                  |
 | --------- | ------------------------------------------- | ------------------------------------------ |
+| ci-rust   | FreeBSD ARM64                               | Clang/LLD + FreeBSD release sysroot        |
 | ci-rust   | Linux x64/ARM64, GNU libc and musl          | Zig + cargo-zigbuild                       |
 | ci-rust   | Windows x64/ARM64                           | LLVM-MinGW, Rust `windows-gnullvm` targets |
 | ci-odin   | Linux x64/ARM64, GNU libc                   | Odin object generation + Zig linking       |
@@ -140,6 +141,7 @@ into Linux or Windows binaries.
 ### Rust
 
 ```sh
+cargo build --release --target aarch64-unknown-freebsd
 cargo zigbuild --release --target x86_64-unknown-linux-gnu
 cargo zigbuild --release --target aarch64-unknown-linux-gnu
 cargo zigbuild --release --target x86_64-unknown-linux-musl
@@ -147,6 +149,11 @@ cargo zigbuild --release --target aarch64-unknown-linux-musl
 cargo build --release --target x86_64-pc-windows-gnullvm
 cargo build --release --target aarch64-pc-windows-gnullvm
 ```
+
+The FreeBSD ARM64 target includes FreeBSD 15.1 base headers and libraries.
+Copy the executable from `target/aarch64-unknown-freebsd/release/` to an ARM64
+FreeBSD system to run it. If you link additional shared libraries from ports,
+you also need their ARM64 versions on the test system.
 
 Windows linker, C/C++ compiler, and archiver settings are scoped to those target
 triples. The Windows runtime is UCRT; use Windows 10/11 as the deployment baseline.

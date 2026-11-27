@@ -96,6 +96,9 @@ build)
 			--label "tech.9dev.freebsd.package-quarter=$quarter"
 	fi
 	dockerfile=$(pwd)/$context/Dockerfile
+	if [ "$name" = rust ]; then
+		set -- "$@" --build-arg "FREEBSD_VERSION=$freebsd"
+	fi
 	# Language images share cross-toolchain sources and smoke tests under ci/cross.
 	case "$name" in rust | odin | go | dotnet) context=. ;; esac
 	"$tool" build --no-cache "$@" \
