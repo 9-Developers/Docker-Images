@@ -8,9 +8,9 @@
   independent `BOOKWORM_*` release settings and is outside the aggregate targets.
 
 - These are native FreeBSD OCI images: builds require a FreeBSD host with rootful Podman, not a Linux container VM on macOS. Use GNU make (`gmake`) from the repository root.
-- `Makefile` is the release-settings source of truth; invoking `sh ci/images.sh` directly uses different revision defaults. Prefer make targets.
+- `Makefile` is the release-settings source of truth; use make targets to pass the image-specific revisions to `ci/images.sh`.
 - Before building, verify the public FreeBSD quarterly package branch and set `CONFIRMED_PKG_QUARTER` to match `PKG_QUARTER`. The public `quarterly` URL rolls forward; this variable is an operator attestation, not a provenance check.
-- Run `gmake check-tools`, then `gmake build-NAME` for a focused build (e.g. `gmake build-go`); it rebuilds base first. `gmake -j 4 build` builds all images. Builds deliberately disable caching and refresh the upstream base.
+- Run `gmake check-tools`, then `gmake build-NAME` for a focused build (e.g. `gmake build-go`); dependent images pull the configured immutable base. `gmake -j 4 build` builds the FreeBSD set against a freshly built base. Builds disable caching.
 - Unprivileged FreeBSD runners use `CONTAINER_TOOL=/usr/local/bin/ci-podman` and `REGISTRY_TOOL=/usr/local/bin/ci-skopeo`. See “Rootful Podman through doas” below; all container operations must share the same rootful storage/auth.
 - Verification lives in Dockerfile `RUN` steps, including `ci/cross/smoke-*.sh` for Rust/Odin/Go/.NET. Those scripts expect fixtures at `/tmp/cross-smoke` inside the build, not the checkout. Cross-target compilation does not prove runtime support; Go and .NET additionally execute native smoke programs.
 - There is no standalone test/lint target. For shell-only edits, `sh -n path/to/script` is a portable syntax check; full verification requires the affected FreeBSD image build.
@@ -30,14 +30,14 @@
 
 ## Publishing and CI
 
-- `gmake publish` rebuilds everything; `gmake publish-existing` publishes local images with the current release settings. `gmake push-NAME` builds and publishes that image. Login requires `REGISTRY_USER` and `REGISTRY_TOKEN`.
-- Release tags are immutable. The publisher checks all requested remote tags and local images before pushing, then advances aliases only after release pushes succeed. A partial publication requires a new `IMAGE_REVISION`; do not publish concurrently.
-- `.forgejo/workflows/publish.yml` runs on a FreeBSD host, serializes publication, and verifies pushed Git tags against `gmake help`'s release value. Keep shell-based steps: JavaScript actions can assume unsupported platform-specific Node binaries.
-- `.forgejo/workflows/publish-one.yml` shares the full publisher's concurrency group. Select a single image to publish a missing release tag without bumping the shared revision. Keep its image choices in sync with `IMAGES` in the Makefile.
+- `gmake publish` builds and publishes missing FreeBSD releases; `gmake publish-existing` publishes missing releases from local storage. `gmake push-NAME` builds and publishes one image. Login requires `REGISTRY_USER` and `REGISTRY_TOKEN`.
+- Release tags are immutable. The publisher checks all selected remote tags and local images before pushing, then advances aliases only after release pushes succeed. Do not publish concurrently. If a push fails partway, check aliases for already-pushed tags; bulk retries skip those images. Bump the affected image's revision if it needs republishing.
+- `.forgejo/workflows/publish.yml` runs on a FreeBSD host, serializes publication, and verifies image-specific Git tags against `gmake tag-NAME`. Keep shell-based steps: JavaScript actions can assume unsupported platform-specific Node binaries.
+- `.forgejo/workflows/publish-one.yml` shares the bulk publisher's concurrency group. Keep both workflows' image choices in sync with `IMAGES` in the Makefile.
 
 ## Releases and quarterly packages
 
-Read current release values from `Makefile` or `gmake help`. Examples below use
+Read current release values from `Makefile` or `gmake tag-NAME`. Examples below use
 placeholders rather than tracking published revisions. Available published tags
 are listed at https://git.9dev.tech/9-Developers/Docker-Images/packages.
 
@@ -82,12 +82,12 @@ export REGISTRY_TOOL=/usr/local/bin/ci-skopeo
 export CONFIRMED_PKG_QUARTER='<verified-quarter>'
 gmake check-tools
 gmake -j 4 build
-# Or build one image, including its base:
+# Or build one image against its published base:
 gmake build-node
 ```
 
 `gmake help` lists targets. Override release settings through make, for example
-`gmake IMAGE_REVISION=<next-revision> publish` (replace the placeholder). Login reads `REGISTRY_USER` and `REGISTRY_TOKEN`
+`gmake RUST_REVISION=<next-revision> push-rust` (replace the placeholder). Login reads `REGISTRY_USER` and `REGISTRY_TOKEN`
 from the environment and sends the token through stdin; the account needs package
 write access to `9-Developers`.
 
@@ -104,7 +104,7 @@ rmdir "$(dirname "$REGISTRY_AUTH_FILE")"
 ```
 
 Use `gmake -j 4 publish` instead of `publish-existing` to build and publish a fresh
-release. Retrying a partially published release requires a new revision.
+release of the images with missing tags.
 
 ## Forgejo Actions setup
 
@@ -119,10 +119,10 @@ release. Retrying a partially published release requires a new revision.
 2. Give the runner account access to Git, GNU make, standard shell utilities, and the privileged container wrappers below. Builds execute directly on that FreeBSD host.
 3. Set repository secrets `REGISTRY_USER` and `REGISTRY_TOKEN` for an account with package write access to `9-Developers`.
 4. After checking public package status, set the Actions variable `CONFIRMED_PKG_QUARTER` to match the Makefile. Recheck before each release.
-5. Commit release settings to `main` and invoke **Publish FreeBSD CI images** manually from `main`, or push the matching tag for a commit on `main`:
+5. Commit release settings to `main` and invoke **Publish FreeBSD CI images** manually from `main`, or push an individual image tag for a commit on `main`:
 
    ```sh
-   release=$(gmake help | sed -n 's/^Release: //p')
+   release=ci-rust/$(gmake -s tag-rust)
    git tag "$release"
    git push origin "$release"
    ```

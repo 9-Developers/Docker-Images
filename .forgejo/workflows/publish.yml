@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   push:
     tags:
-      - 'freebsd*-20*q*-r*'
+      - 'ci-*/*'
 
 concurrency:
   group: freebsd-image-publish
@@ -47,7 +47,8 @@ jobs:
               ;;
           esac
           git clean -ffd
-      - name: Verify release tag
+      - name: Select release target
+        id: release
         shell: sh
         env:
           REF: ${{ github.ref }}
@@ -55,9 +56,17 @@ jobs:
           set -eu
           case "$REF" in
             refs/tags/*)
-              expected=$(gmake help | sed -n 's/^Release: //p')
-              test "${REF#refs/tags/}" = "$expected"
+              tag=${REF#refs/tags/ci-}
+              image=${tag%%/*}
+              case "$image" in
+                base|dotnet|go|node|odin|openjdk|postgres|railway|rust|security) ;;
+                *) echo "Unknown release image: $image" >&2; exit 1 ;;
+              esac
+              expected=$(gmake -s "tag-$image")
+              test "$tag" = "$image/$expected"
+              echo "target=push-$image" >> "$GITHUB_OUTPUT"
               ;;
+            *) echo "target=publish" >> "$GITHUB_OUTPUT" ;;
           esac
       - name: Check privileged container tools
         shell: sh
@@ -73,7 +82,8 @@ jobs:
         shell: sh
         env:
           REGISTRY_AUTH_FILE: ${{ runner.temp }}/ci-registry-auth.json
-        run: gmake -j 4 publish
+          TARGET: ${{ steps.release.outputs.target }}
+        run: gmake -j 4 "$TARGET"
       - name: Remove registry credentials
         if: always()
         shell: sh

@@ -7,14 +7,34 @@ registry=${REGISTRY:-git.9dev.tech}
 owner=${OWNER:-9-developers}
 freebsd=${FREEBSD_VERSION:-15.1}
 quarter=${PKG_QUARTER:-2026q4}
-revision=${IMAGE_REVISION:-1}
-release=freebsd${freebsd}-${quarter}-r${revision}
 source_url=https://git.9dev.tech/9-Developers/Docker-Images
 
 image() { printf '%s/%s/ci-%s' "$registry" "$owner" "$1"; }
-version() {
+revision() {
 	case "$1" in
-	railway) printf 'bookworm-r%s' "$BOOKWORM_REVISION" ;;
+	base) echo "${BASE_REVISION:?}" ;;
+	dotnet) echo "${DOTNET_REVISION:?}" ;;
+	go) echo "${GO_REVISION:?}" ;;
+	node) echo "${NODE_REVISION:?}" ;;
+	odin) echo "${ODIN_REVISION:?}" ;;
+	openjdk) echo "${OPENJDK_REVISION:?}" ;;
+	postgres) echo "${POSTGRES_REVISION:?}" ;;
+	rust) echo "${RUST_REVISION:?}" ;;
+	security) echo "${SECURITY_REVISION:?}" ;;
+	*)
+		echo "Unknown FreeBSD image: $1" >&2
+		return 1
+		;;
+	esac
+}
+version() {
+	if [ "$1" = railway ]; then
+		printf 'bookworm-r%s' "$BOOKWORM_REVISION"
+		return
+	fi
+	number=$(revision "$1") || return 1
+	release=freebsd${freebsd}-${quarter}-r${number}
+	case "$1" in
 	node) printf '24-%s' "$release" ;;
 	openjdk) printf '25-%s' "$release" ;;
 	postgres) printf '18-%s' "$release" ;;
@@ -44,7 +64,7 @@ validate() {
 		return
 	fi
 	printf '%s\n' "$quarter" | grep -Eq '^[0-9]{4}q[1-4]$'
-	printf '%s\n' "$revision" | grep -Eq '^[1-9][0-9]*$'
+	revision "$1" | grep -Eq '^[1-9][0-9]*$'
 	printf '%s\n' "$freebsd" | grep -Eq '^[0-9]+\.[0-9]+$'
 	if [ "${CONFIRMED_PKG_QUARTER:-}" != "$quarter" ]; then
 		echo "Verify the public quarterly package branch, then set CONFIRMED_PKG_QUARTER=$quarter" >&2
@@ -52,9 +72,26 @@ validate() {
 	fi
 }
 
+# Only a missing manifest or repository is safe to treat as unpublished.
+published() {
+	if "$registry_tool" inspect --raw "docker://$1" >/dev/null 2>"$error"; then
+		return 0
+	fi
+	if grep -Eiq 'manifest unknown|name unknown' "$error"; then return 1; fi
+	cat "$error" >&2
+	exit 1
+}
+
 command=$1
 shift
 case "$command" in
+tag)
+	version "$1" && printf '\n'
+	;;
+pull-base)
+	validate base
+	"$tool" pull "$(image base):$(version base)"
+	;;
 check-tools)
 	"$tool" info
 	"$registry_tool" --version
@@ -80,7 +117,7 @@ build)
 		context=ci/base
 		;;
 	node | openjdk | postgres | rust | security | odin | go | dotnet)
-		base=$(image base):$release
+		base=$(image base):$(version base)
 		digest=$("$tool" image inspect --format '{{index .Labels "tech.9dev.freebsd.upstream-digest"}}' "$base")
 		context=ci/$name
 		case "$name" in node) context=$context/24 ;; openjdk) context=$context/25 ;; postgres) context=$context/18 ;; dotnet) context=$context/10 ;; esac
@@ -109,7 +146,7 @@ build)
 		--label "org.opencontainers.image.created=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
 		--tag "$(image "$name"):$(version "$name")" "$context"
 	;;
-publish)
+missing | publish)
 	# Check every tag before pushing; fail closed on auth/network errors.
 	error=$(mktemp)
 	trap 'rm -f "$error"' EXIT HUP INT TERM
@@ -117,16 +154,15 @@ publish)
 		validate "$name"
 		ref=$(image "$name"):$(version "$name")
 		# Skopeo's docker transport always queries the registry, never local storage.
-		if "$registry_tool" inspect --raw "docker://$ref" >/dev/null 2>"$error"; then
-			setting=IMAGE_REVISION
-			if [ "$name" = railway ]; then setting=BOOKWORM_REVISION; fi
-			echo "Release already exists: $ref (increment $setting)" >&2
+		if published "$ref"; then
+			if [ "$command" = missing ]; then continue; fi
+			echo "Release already exists: $ref (increment the $name revision)" >&2
 			exit 1
-		elif ! grep -Eiq 'manifest unknown|name unknown' "$error"; then
-			cat "$error" >&2
-			exit 1
+		elif [ "$command" = missing ]; then
+			printf '%s ' "$name"
 		fi
 	done
+	if [ "$command" = missing ]; then exit 0; fi
 	# Ensure the entire local release is available before the first push.
 	for name; do
 		"$tool" image inspect "$(image "$name"):$(version "$name")" >/dev/null

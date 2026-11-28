@@ -52,6 +52,27 @@ The language examples below run inside the selected image with your project as
 the working directory. Cross-compilation targets describe the generated
 binaries, not the host architectures on which the container can run.
 
+### Publishing a FreeBSD image
+
+Each image has its own revision in `Makefile`. For a Rust-only change, bump
+`RUST_REVISION`, commit it with the change on `main`, and select `rust` in
+**Publish one CI image**, or push an image-specific Git tag:
+
+```sh
+tag="ci-rust/$(gmake -s tag-rust)"
+git tag "$tag"
+git push origin "$tag"
+```
+
+On the configured FreeBSD runner, `gmake push-rust` performs the same release:
+it pulls the immutable tag selected by `BASE_REVISION`, builds Rust, and pushes
+only Rust's release tag and moving alias. To adopt a changed base or shared
+toolchain in other images, bump each affected image's revision too.
+
+For a coordinated release, manually run **Publish FreeBSD CI images** from
+`main` (or `gmake publish` on the runner). It checks the registry and builds
+and publishes only missing FreeBSD tags, building base first if its tag is missing.
+
 ### Railway deployments on Debian Bookworm
 
 Use `git.9dev.tech/9-developers/ci-railway:bookworm` for Linux jobs that build
@@ -108,8 +129,8 @@ On first startup the image requires `POSTGRES_PASSWORD`; `POSTGRES_USER`
 defaults to `postgres`, and `POSTGRES_DB` defaults to the user name. A new
 service container gets an empty cluster. The moving aliases are `18` and
 `18-freebsd15.1`. To publish just this image, run **Publish one CI image**
-from the branch containing the image and select `postgres`. This rebuilds the
-base locally but pushes only Postgres. After publishing, run **Test PostgreSQL service
+from `main` and select `postgres`. This pulls the configured base and pushes
+only Postgres. After publishing, run **Test PostgreSQL service
 from ci-rust** workflow to check DNS, readiness, and an authenticated `SELECT 1`.
 
 ## Cross-compilation
